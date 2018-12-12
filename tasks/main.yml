@@ -1,0 +1,98 @@
+---
+## please note, this code is built for docker deployments; ocp deployments will require connection to a manager to kick off pods/service/routes
+- name: make docker build structure on docker build server
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+  loop:
+  - {{ alldockerdirs }}"
+
+- name: has the docker image been built?
+  shell: "docker images {{ imagename }}"
+  register: imagenamevar
+
+- name: push relevant rpms to the docker build server
+  copy: 
+    src: "files/{{ item }}"
+    dest: "{{ dockerRPMSbuilddir }}"
+  loop:
+  - "{{ rpms }}"
+
+- name: look up the generated public ssh key (injected as authorized_key during docker build)
+  shell: awx-manage generate_isolated_key
+  args:
+    executable: /bin/bash
+  become_user: '{{ aw_user }}'
+  become: True
+  delegate_to: "{{ tower_node }}"
+  register: isolated_key
+
+- name: push relevant sshkey to the docker build server
+  template: 
+    files: "templates/{{ sshkeyj2 }}"
+    dest: "{{ dockerFILESbuilddir }}"
+
+- name: copy Dockerfile to {{ dockerbuilddir }}
+  copy:
+    src: "files/{{ dockerfile }}"
+    dest: "{{ dockerbuilddir }}"
+
+- name: if the image doesn't exist, build it
+  shell: "docker -t {{ imagename }} ."
+  args:
+    chdir: "{{ dockerbuilddir }}"
+  when: imagenamevar is not defined
+
+- name: is the isolated node container already running?
+  shell: "docker ps | grep {{ isolatedcontainername }}"
+  register: isolatedcontainernamevar
+
+- name: run the isolated node container if it wasn't already running
+  shell: "docker run -it -d -p 2222:22 --name {{ isolatedcontainername }} {{ imagename }}"
+  when: isolatedcontainernamevar is not defined
+   
+- name: register associated isolated instances.
+  shell: awx-manage provision_instance --hostname="{{ containername }}"
+  args:
+    executable: /bin/bash
+  register: provision_instance
+  changed_when: "'changed: True' in provision_instance.stdout"
+  become_user: '{{ aw_user }}'
+  delegate_to: "{{ tower_node }}"
+  become: yes
+
+- name: register associated isolated instance group.
+  shell: awx-manage register_queue --queuename="{{ testisolatedqueue }}" --hostnames="{{ containername }}" --controller="{{ controller }}"
+  args:
+    executable: /bin/bash
+  become_user: '{{ aw_user }}'
+  become: True
+  delegate_to: "{{ tower_node }}"
+  register: register_queue
+  changed_when: "'changed: True' in register_queue.stdout"
+
+### commented out because I already had a key; uncomment and run to generate an isolated keypair
+#- name: generate an initial SSH Key for all isolated nodes (run_once=True)
+#  shell: awx-manage generate_isolated_key
+#  args:
+#    executable: /bin/bash
+#  become_user: '{{ aw_user }}'
+#  become: True
+#  delegate_to: "{{ _controller }}"
+#  delegate_to: "{{ tower_node }}"
+#  run_once: True
+#  when: isolated_key_generation|bool
+
+- name: look up the generated public SSH key
+  shell: awx-manage generate_isolated_key
+  args:
+    executable: /bin/bash
+  become_user: '{{ aw_user }}'
+  become: True
+  delegate_to: "{{ tower_node }}"
+  register: isolated_key
+
+- name: perform the first isolated heartbeat
+  shell: echo 'from awx.main.tasks import awx_isolated_heartbeat; awx_isolated_heartbeat.apply_async()' | awx-manage shell_plus
+  delegate_to: "{{ tower_node }}"

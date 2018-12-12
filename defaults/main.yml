@@ -1,0 +1,32 @@
+## the tower user
+aw_user: "awx"
+
+## need to run the awx-manage commands on a tower node
+towernode: "tower.ky13laptop.com" 
+
+## ssh key to be injected into the isolated node container
+sshkeyj2: "id_rsa.pub.j2"
+
+## requisite rpms for tower isolated nodes
+rpms: ['ansible-tower-isolated-3.3.0-1.el7.x86_64.rpm, 'ansible-tower-venv-ansible-3.3.0-1.el7.x86_64.rpm']
+
+## docker build dirs
+dockerbuilddir: "/tmp/dockerisolated"
+dockerFILESbuilddir: "{{ dockerbuilddir }}/FILES"
+dockerRPMSbuilddir: "{{ dockerbuilddir }}/RPMS"
+alldockerdirs: ['{{ dockerbuilddir }}', '{{ dockerFILESbuilddir }}', '{{ dockerRPMSbuilddir }}']
+
+## the name of your docker image
+imagename: "towerisolatedcontainer"
+
+## the name of your Dockerfile
+dockerfile: "Dockerfile"
+
+## name of the isolated_instance group/queue
+testisolatedqueue: "ky13queue"
+
+## change to whatever instance group you'd like to use as the controller
+controller: "tower"
+
+## would not need to point to the host on an OCP deployment; this was a simple docker build
+containername: "192.168.122.1"
