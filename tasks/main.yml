@@ -5,8 +5,8 @@
     path: "{{ item }}"
     state: directory
     mode: 0755
-  loop:
-  - {{ alldockerdirs }}"
+  with_items:
+  - "{{ alldockerdirs }}"
 
 - name: has the docker image been built?
   shell: "docker images {{ imagename }}"
@@ -30,7 +30,7 @@
 
 - name: push relevant sshkey to the docker build server
   template: 
-    files: "templates/{{ sshkeyj2 }}"
+    src: "templates/{{ sshkeyj2 }}"
     dest: "{{ dockerFILESbuilddir }}"
 
 - name: copy Dockerfile to {{ dockerbuilddir }}
@@ -42,10 +42,12 @@
   shell: "docker -t {{ imagename }} ."
   args:
     chdir: "{{ dockerbuilddir }}"
+  ignore_errors: true
   when: imagenamevar is not defined
 
 - name: is the isolated node container already running?
   shell: "docker ps | grep {{ isolatedcontainername }}"
+  failed_when: "'ERROR' in isolatedcontainernamevar.stdout"
   register: isolatedcontainernamevar
 
 - name: run the isolated node container if it wasn't already running

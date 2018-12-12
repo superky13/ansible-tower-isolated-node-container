@@ -2,13 +2,13 @@
 aw_user: "awx"
 
 ## need to run the awx-manage commands on a tower node
-towernode: "tower.ky13laptop.com" 
+tower_node: "tower.ky13laptop.com" 
 
 ## ssh key to be injected into the isolated node container
 sshkeyj2: "id_rsa.pub.j2"
 
 ## requisite rpms for tower isolated nodes
-rpms: ['ansible-tower-isolated-3.3.0-1.el7.x86_64.rpm, 'ansible-tower-venv-ansible-3.3.0-1.el7.x86_64.rpm']
+rpms: ['ansible-tower-isolated-3.3.0-1.el7.x86_64.rpm', 'ansible-tower-venv-ansible-3.3.0-1.el7.x86_64.rpm']
 
 ## docker build dirs
 dockerbuilddir: "/tmp/dockerisolated"
@@ -18,6 +18,9 @@ alldockerdirs: ['{{ dockerbuilddir }}', '{{ dockerFILESbuilddir }}', '{{ dockerR
 
 ## the name of your docker image
 imagename: "towerisolatedcontainer"
+
+## the name of your isolated node container
+isolatedcontainername: "towerisolatedky13"
 
 ## the name of your Dockerfile
 dockerfile: "Dockerfile"
